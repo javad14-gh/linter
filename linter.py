@@ -27,21 +27,12 @@ async def get_word(updat:Update, context: ContextTypes.DEFAULT_TYPE):
 async def find_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global word
     word = update.message.text.lower()
-    # sheet = load_workbook(path).active
-    # mydict = {}
-    # for x,y in sheet[f'A1:B{sheet.max_row}']:
-    #     mydict[x.value] = y.value
-    #     mydict[y.value] = x.value
-    # if word in mydict.keys():
     if not sheet[sheet.kalame == word].empty:
         await context.bot.send_message(chat_id=update.effective_chat.id,text=f'in kalame hast\n{sheet[sheet.kalame == word].mani.item()}')
         return menu
     else:
         await context.bot.send_sticker(chat_id=update.effective_chat.id,sticker='CAACAgQAAxkBAAEG_BJjpwlt0zHspfumsnhjHC2mTjvOjQACBAoAAvZRiVL44lglOLvBKCwE')
         await context.bot.send_message(chat_id=update.effective_chat.id,text='in kalame tuye dictionary nist.\nmikhay ezafe konim?',reply_markup=ReplyKeyboardMarkup([['YES','NO']]))
-        # answer = await update.message.text
-        # if answer == 'YES':
-        #     context.bot.send_message(chat_id=update.effective_chat.id,text='eyval')
         return addOrNot
 
 async def Error(update:Update,context:ContextTypes.DEFAULT_TYPE):
