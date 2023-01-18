@@ -2,16 +2,18 @@ from telegram import Update , ReplyKeyboardMarkup ,MessageEntity
 from telegram.ext import ApplicationBuilder, ConversationHandler , CommandHandler , MessageHandler , ContextTypes,filters
 from openpyxl import load_workbook
 import pandas as pd
-from random import randint
-from datetime import date , timedelta
+from random import choice
+from datetime import datetime , timedelta
 
-menu = [['review','find word']]
+menu = [['review','find word'],['cancel']]
 markup = ReplyKeyboardMarkup(menu,one_time_keyboard=True)
-path = '/Users/chartex/Downloads/linter.xlsx'
-menu,findWord,addOrNot,addWord,isTrue = range(5)
-sheet = pd.read_excel(path)
+path = 'linter.csv'
+menu,findWord,addOrNot,addWord,isTrue,_continue = range(6)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global sheet
+    sheet = pd.read_csv(path)
     name = update.message.from_user['first_name']
     Entity = [{'offset':6,'length':len(name),'type':'bold'}]
     await context.bot.send_sticker(chat_id=update.effective_chat.id, sticker='CAACAgQAAxkBAAEG_BhjpwzaE0_WGWvzgT9r-BK0Yy60GQACiwgAAmfHiVJJMa5s69pZ0iwE')
@@ -31,7 +33,7 @@ async def find_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     mydict[x.value] = y.value
     #     mydict[y.value] = x.value
     # if word in mydict.keys():
-    if sheet[sheet.kalame == word].bool:
+    if not sheet[sheet.kalame == word].empty:
         await context.bot.send_message(chat_id=update.effective_chat.id,text=f'in kalame hast\n{sheet[sheet.kalame == word].mani.item()}')
         return menu
     else:
@@ -48,32 +50,33 @@ async def Error(update:Update,context:ContextTypes.DEFAULT_TYPE):
 
 async def start_review(update: Update,context: ContextTypes.DEFAULT_TYPE):
     global review_word
-    def reviewWord():
-        w = sheet[sheet.date <= date.today()].kalame.get(randint(1,sheet.last_valid_index()))
-        return w
-    while True:
-        review_word = reviewWord()
-        if review_word:
-            await context.bot.send_message(chat_id=update.effective_chat.id,text=review_word)
-            mani = sheet[sheet.kalame == review_word].mani.item()
-            await context.bot.send_message(chat_id=update.effective_chat.id,text= mani ,entities=[{'offset':0,'length':len(mani),'type':'spoiler'}])
-            await context.bot.send_message(chat_id=update.effective_chat.id,text='balad budi?',reply_markup=ReplyKeyboardMarkup([['yes','no']],one_time_keyboard=True))
-            break    
+    l = sheet[sheet.date <= str(datetime.today().date())].kalame.to_list()
+    if l == []:
+        await context.bot.send_message(chat_id=update.effective_chat.id,text='kalamei baraye morur nist')
+        return menu
+    else:
+        review_word = choice(l)
+        await context.bot.send_message(chat_id=update.effective_chat.id,text=review_word)
+        mani = sheet[sheet.kalame == review_word].mani.item()
+        await context.bot.send_message(chat_id=update.effective_chat.id,text= mani ,entities=[{'offset':0,'length':len(mani),'type':'spoiler'}])
+        await context.bot.send_message(chat_id=update.effective_chat.id,text='balad budi?',reply_markup=ReplyKeyboardMarkup([['yes','no']],one_time_keyboard=True))
     return isTrue
 
 async def get_mean(updat: Update, context:ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=updat.effective_chat.id,text='hala ke mikhay ezafe koni lotfan mani kalame ro be man bede')
     return addWord
 
-#TODO eslah beshe ba pandas
+
 async def add_word(update: Update,context:ContextTypes.DEFAULT_TYPE):
     mean = update.message.text.lower()
-    wb = load_workbook(path)
-    sheet = wb.active
-    max_row = sheet.max_row
-    sheet[f'A{max_row}'] = word
-    sheet[f'B{max_row}'] = mean    
-    wb.save(path)
+    # wb = load_workbook(path)
+    # sheet = wb.active
+    # max_row = sheet.max_row
+    # sheet[f'A{max_row}'] = word
+    # sheet[f'B{max_row}'] = mean    
+    # wb.save(path)
+    sheet.loc[len(sheet.index)] = [word,mean,1,datetime.today().date()]
+    sheet.to_csv(path,index=False)
     await context.bot.send_message(chat_id=update.effective_chat.id,text='kalameye jadid save shod\nbargashtim menuye asli hala chikar konim?????',reply_markup=markup)
     return menu
 
@@ -87,10 +90,17 @@ async def check_review(update:Update,context:ContextTypes.DEFAULT_TYPE):
         status_list = [1,3,5,7,15,30]
         i = sheet.index[sheet.kalame == review_word].item()
         old_status = sheet[sheet.index == i].status.item()
-        sheet.at[i,'date'] +=  timedelta(days= old_status)
+        old_date = datetime.strptime(sheet[sheet.index == i].date.item(),'%Y-%m-%d')
+        sheet.at[i,'date'] =  old_date + timedelta(days= old_status)
         sheet.at[i,'status'] = status_list[status_list.index(old_status)+1]
-    await context.bot.send_message(chat_id=update.effective_chat.id,text='mikhay edame bedi?',reply_markup=ReplyKeyboardMarkup([['yes','no']],one_time_keyboard=True))
-    return menu
+        sheet.to_csv(path,index=False)
+    await context.bot.send_message(chat_id=update.effective_chat.id,text='mikhay edame bedi?',reply_markup=ReplyKeyboardMarkup([['YES','NO']],one_time_keyboard=True))
+    return _continue
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(chat_id=update.effective_chat.id,text='mersi ke az man estefade kardi\nharvaght khasti \'/start\' ro bezani man dar khedmatam')
+    await context.bot.send_sticker(chat_id=update.effective_chat.id, sticker='CAACAgQAAxkBAAEHUw5jyA6HNrwCBpQrohvsAqYwPt4qEwAChwoAAqkbiVIwObBnZtRl8S0E')
+    return ConversationHandler.END
 
 def main():
     application = ApplicationBuilder().token('5024895126:AAGbQ7OBTxoiMxtdPtwATDNSzgY6Qlvcj7o').build()
@@ -103,9 +113,11 @@ def main():
             addOrNot: [MessageHandler(filters.Regex('^YES$'),get_mean),
                        MessageHandler(filters.Regex('^NO$'),return_menu)],
             addWord: [MessageHandler(filters.Regex('.*'),add_word)],
-            isTrue: [MessageHandler(filters.Regex('.*'),check_review)]
+            isTrue: [MessageHandler(filters.Regex('.*'),check_review)],
+            _continue: [MessageHandler(filters.Regex('^YES$'),start_review),
+                       MessageHandler(filters.Regex('^NO$'),return_menu)]
         },
-        fallbacks= []
+        fallbacks= [MessageHandler(filters.Regex("^cancel$"), cancel)]
     )
     application.add_handler(conv_handler)
     application.run_polling()
