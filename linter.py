@@ -7,7 +7,7 @@ from datetime import datetime , timedelta
 
 menu = [['review','find word'],['cancel']]
 markup = ReplyKeyboardMarkup(menu,one_time_keyboard=True)
-path = 'linter.csv'
+path = 'linter/linter.csv'
 menu,findWord,addOrNot,addWord,isTrue,_continue = range(6)
 
 
